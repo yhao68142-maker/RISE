@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>发包文件一键转移复制</title>
+<style>
+  :root{
+    --bg:#0b1020;
+    --grad1:#10172a; --grad2:#0f172a;
+    --primary:#5b8cff; --primary-2:#7aa2ff;
+    --border:#1f2a44; --fg:#e5ebff; --muted:#9aa6c2;
+    --chip:#121a33; --ok:#22c55e; --warn:#f59e0b;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 800px at 20% -10%, #1b2a5b33,transparent 60%),
+      radial-gradient(900px 600px at 120% 10%, #134e4a22,transparent 60%),
+      linear-gradient(180deg,#091024, #0b1020 35%, #0b1020);
+    color:var(--fg);
+    font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,Helvetica,Arial;
+  }
+  .wrap{max-width:1040px;margin:32px auto;padding:0 16px}
+  header{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:18px}
+  h1{margin:0;font-weight:800;font-size:22px;letter-spacing:.3px}
+  .badge{display:inline-flex;gap:8px;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:linear-gradient(180deg,#0e1630,#0b1228)}
+  .card{border:1px solid var(--border);background:linear-gradient(180deg,var(--grad1),var(--grad2));border-radius:18px;box-shadow:0 10px 30px rgba(2,6,23,.35);overflow:hidden}
+  .pad{padding:18px}
+  label{display:block;font-size:12px;color:var(--muted);margin:8px 0 6px}
+  input[type=text]{width:100%;padding:12px;border:1px solid var(--border);background:#0b1330;color:var(--fg);border-radius:12px;font:inherit;outline:none}
+  input[type=text]:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(91,140,255,.15)}
+  .btn{appearance:none;border:1px solid var(--border);background:linear-gradient(180deg,#0e1632,#0c142d);color:#eaf1ff;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}
+  .btn.primary{background:linear-gradient(180deg,#294ecf,#2142b5);border-color:#3558d3}
+  .btn.success{background:linear-gradient(180deg,#1f8b4f,#17753f);border-color:#258b58}
+  .btn.ghost{background:#0f1533}
+  .btn.alt{background:linear-gradient(180deg,#161e3d,#121a39)}
+  .btn.warn{background:linear-gradient(180deg,#9a6a18,#7c540f)}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .sep{height:1px;background:var(--border);margin:14px 0}
+  .k{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#0d1330;padding:2px 6px;border-radius:6px;border:1px solid var(--border);color:#c3ceff}
+
+  /* Progress bar */
+  .bar{position:relative;height:14px;border-radius:999px;background:#0f1638;border:1px solid var(--border);overflow:hidden;flex:0 0 280px}
+  .fill{position:absolute;left:0;top:0;height:100%;width:0;background:linear-gradient(90deg, rgba(91,140,255,1), rgba(122,162,255,1));box-shadow:0 0 12px rgba(91,140,255,.45)}
+  .pct{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:#eaf1ff;text-shadow:0 1px 2px rgba(0,0,0,.8);line-height:14px;pointer-events:none}
+
+  .muted{color:var(--muted)}
+  .list{max-height:300px;overflow:auto;border:1px dashed var(--border);border-radius:14px;padding:8px;background:#0a1230}
+  .item{padding:8px 10px;border-radius:12px;display:flex;align-items:center;gap:10px}
+  .item:nth-child(odd){background:#0e1738}
+
+  /* Copy info box */
+  .copybox{margin-top:8px;border:1px solid var(--border);border-radius:12px;padding:10px;background:linear-gradient(180deg,#0b1330,#0a122c)}
+  .copybox strong{color:#dbe7ff}
+  .copylist{margin:6px 0 0;padding-left:18px;max-height:120px;overflow:auto}
+  .copymeta{font-size:12px;color:var(--muted);margin-top:6px}
+  .truncate{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* Dept chips */
+  .chipbox{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:var(--chip);border:1px solid var(--border);color:var(--fg);cursor:pointer;user-select:none}
+  .chip input{accent-color:#5b8cff}
+  .section-title{font-weight:700;margin:10px 0 4px}
+
+  /* 更大、更显眼的拖拽区域 */
+  .dropzone{
+    margin-top:16px;
+    padding:26px 18px;
+    border-radius:18px;
+    border:2px dashed var(--primary);
+    background:
+      radial-gradient(260px 160px at 10% 0%, rgba(91,140,255,0.18), transparent 65%),
+      radial-gradient(260px 160px at 90% 100%, rgba(34,197,94,0.14), transparent 65%),
+      #050819;
+    color:var(--muted);
+    font-size:14px;
+    text-align:center;
+    cursor:pointer;
+    transition:
+      border-color .18s ease,
+      background .18s ease,
+      color .18s ease,
+      box-shadow .18s ease,
+      transform .12s ease;
+    box-shadow:0 0 0 1px rgba(15,23,42,0.6), 0 14px 30px rgba(15,23,42,0.7);
+  }
+  .dropzone strong{
+    color:var(--fg);
+    display:block;
+    font-size:15px;
+    margin-bottom:4px;
+  }
+  .dropzone::before{
+    content:"📁";
+    display:block;
+    font-size:24px;
+    margin-bottom:6px;
+    opacity:0.95;
+  }
+  .dropzone:hover{
+    border-color:var(--primary-2);
+    box-shadow:0 18px 40px rgba(37,99,235,0.45);
+    transform:translateY(-1px);
+  }
+  .dropzone.dragover{
+    border-color:var(--primary-2);
+    background:
+      radial-gradient(280px 180px at 15% 0%, rgba(91,140,255,0.35), transparent 70%),
+      radial-gradient(280px 180px at 85% 100%, rgba(34,197,94,0.25), transparent 70%),
+      #050819;
+    color:#e5ebff;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>发包文件一键转移复制</h1>
+      <div class="badge">
+        <span>需要</span>
+        <span class="k">Chrome / Edge 86+</span>
+        <span>· File System Access API</span>
+      </div>
+    </header>
+
+    <div class="card pad">
+      <!-- 匹配规则 -->
+      <div>
+        <label>匹配规则（正则，可编辑）</label>
+        <input id="regex" type="text" value="^(?:[OTRSM](?:[A-I]|N|0|UN))" />
+        <div class="toolbar" style="margin-top:8px">
+          <label class="muted" style="margin:0;display:flex;align-items:center;gap:8px">
+            <input id="ignoreCase" type="checkbox" checked /> 忽略大小写
+          </label>
+          <button class="btn ghost" id="btnPresetDefault" type="button">默认</button>
+          <button class="btn ghost" id="btnPresetO" type="button">示例：仅 O 族</button>
+          <button class="btn ghost" id="btnPresetTRSM" type="button">示例：仅 TRSM</button>
+        </div>
+
+        <div class="chipbox">
+          <span class="muted" style="margin-right:6px">部门筛选：</span>
+          <label class="chip"><input type="checkbox" class="dept" data-letter="O" checked> OB 部门</label>
+          <label class="chip"><input type="checkbox" class="dept" data-letter="T" checked> TX 部门</label>
+          <label class="chip"><input type="checkbox" class="dept" data-letter="R" checked> RX 部门</label>
+          <label class="chip"><input type="checkbox" class="dept" data-letter="S" checked> SM 部门</label>
+          <label class="chip"><input type="checkbox" class="dept" data-letter="M" checked> MM 部门</label>
+          <button class="btn ghost" id="deptAll" type="button">部门全选</button>
+          <button class="btn ghost" id="deptNone" type="button">部门全不选</button>
+        </div>
+      </div>
+
+      <div class="sep"></div>
+
+      <!-- 源目录 -->
+      <div>
+        <label class="section-title">源目录（可多选）</label>
+        <div class="toolbar">
+          <button id="pickSrc" class="btn" type="button">添加源目录</button>
+          <button id="clearSrc" class="btn warn" type="button">清空</button>
+          <div class="muted">扫描方式：
+            <select id="depth" style="padding:8px;border:1px solid var(--border);background:#0b1330;color:#e5ebff;border-radius:10px;font:inherit">
+              <option value="recurse" selected>递归扫描</option>
+              <option value="top">仅顶层</option>
+            </select>
+          </div>
+        </div>
+        <!-- 源目录拖拽框 -->
+        <div id="srcDrop" class="dropzone">
+          <strong>将源文件夹拖到这里</strong>或点击这里 / 上方按钮选择目录
+        </div>
+        <div id="srcList" class="list" style="margin-top:8px"></div>
+      </div>
+
+      <!-- 目标与复制 -->
+      <div style="margin-top:14px">
+        <label class="section-title">目标目录与复制</label>
+        <div class="toolbar">
+          <button id="pickDst" class="btn success" type="button">选择目标目录</button>
+          <button id="openDst" class="btn ghost" type="button" disabled>打开目标目录</button>
+          <button id="start" class="btn primary" type="button" disabled>开始复制</button>
+          <div class="bar">
+            <div class="fill" id="fill"></div>
+            <div class="pct" id="pct">0%</div>
+          </div>
+        </div>
+        <!-- 目标目录拖拽框 -->
+        <div id="dstDrop" class="dropzone">
+          <strong>将目标文件夹拖到这里</strong>或点击这里 / 上方按钮选择目录
+        </div>
+        <div id="dstPath" class="muted" style="margin-top:8px"></div>
+
+        <div id="copyBox" class="copybox" style="display:none;">
+          <div class="truncate"><strong>正在复制：</strong><span id="copyingName">—</span></div>
+          <div class="copymeta" id="copyMeta">0 / 0</div>
+          <ul id="copyList" class="copylist"></ul>
+        </div>
+      </div>
+
+      <div class="sep"></div>
+
+      <!-- 命中/选择 -->
+      <div>
+        <label class="section-title">命中目录（默认全选）</label>
+        <div class="toolbar" style="margin-top:8px">
+          <button id="preview" class="btn alt" type="button">预览命中</button>
+        </div>
+        <div class="toolbar" style="margin-top:8px">
+          <button id="btnAll" class="btn ghost" type="button">全选</button>
+          <button id="btnNone" class="btn ghost" type="button">全不选</button>
+          <button id="btnInvert" class="btn ghost" type="button">反选</button>
+        </div>
+        <div id="stat" class="muted" style="margin-top:8px">尚未预览</div>
+        <div id="hitList" class="list" style="margin-top:8px"></div>
+      </div>
+
+      <p class="hint" style="margin-top:10px">隐私：所有操作均在本地浏览器完成，不会上传任何文件。</p>
+    </div>
+  </div>
+
+<script>
+(() => {
+  if (!('showDirectoryPicker' in window)) {
+    alert('此页面需要 File System Access API。请使用最新版 Chrome/Edge 打开。');
+  }
+
+  /** 状态 **/
+  /** @type {FileSystemDirectoryHandle[]} */
+  const srcDirs = [];
+  /** @type {FileSystemDirectoryHandle|null} */
+  let dstDir = null;
+  /** @type {FileSystemDirectoryHandle[]} */
+  let previewMatches = [];
+
+  /** 工具 **/
+  const $ = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+  const depthSel   = $('#depth');
+  const srcList    = $('#srcList');
+  const dstPath    = $('#dstPath');
+  const hitList    = $('#hitList');
+  const stat       = $('#stat');
+  const fill       = $('#fill');
+  const pct        = $('#pct');
+  const copyBox    = $('#copyBox');
+  const copyingName= $('#copyingName');
+  const copyMeta   = $('#copyMeta');
+  const copyList   = $('#copyList');
+  const regexInput = $('#regex');
+  const ignoreCase = $('#ignoreCase');
+  const srcDrop    = $('#srcDrop');
+  const dstDrop    = $('#dstDrop');
+
+  function selectedLetters(){
+    const set = new Set();
+    $$('.dept').forEach(cb => { if (cb.checked) set.add(cb.dataset.letter); });
+    // 如果全部没勾，视为全选，避免误操作导致 0 结果
+    if (set.size === 0) return new Set(['O','T','R','S','M']);
+    return set;
+  }
+
+  function renderSrc(){
+    srcList.innerHTML = '';
+    srcDirs.forEach((h,i) => {
+      const row = document.createElement('div');
+      row.className = 'item';
+      row.innerHTML = `<span class="k">[${i+1}]</span> <strong>${h.name || '(未知名称)'}</strong>`;
+      const del = document.createElement('button');
+      del.textContent = '移除';
+      del.className = 'btn ghost';
+      del.style.marginLeft = 'auto';
+      del.onclick = () => { srcDirs.splice(i,1); renderSrc(); };
+      row.appendChild(del);
+      srcList.appendChild(row);
+    });
+  }
+
+  async function pickSourceDir(){
+    try{
+      const handle = await window.showDirectoryPicker();
+      srcDirs.push(handle);
+      renderSrc();
+    }catch(e){}
+  }
+  function clearSrc(){
+    srcDirs.length = 0;
+    renderSrc();
+  }
+
+  async function pickDestDir(){
+    try{
+      dstDir = await window.showDirectoryPicker();
+      dstPath.textContent = `已选择：${dstDir.name}`;
+      $('#start').disabled = false;
+      $('#openDst').disabled = false;
+    }catch(e){}
+  }
+
+  async function openDestDir(){
+    if(!dstDir){ alert('请先选择目标目录'); return; }
+    try{
+      await window.showDirectoryPicker({ startIn: dstDir });
+    }catch(e){}
+  }
+
+  async function *iterDirs(dirHandle, topOnly){
+    for await (const [name,handle] of dirHandle.entries()){
+      if (handle.kind === 'directory'){
+        yield { name, handle };
+        if (!topOnly){ yield* iterDirs(handle, false); }
+      }
+    }
+  }
+
+  function buildRegex(){
+    const raw = (regexInput?.value || '').trim();
+    const flags = ignoreCase?.checked ? 'i' : '';
+    const core = raw.replace(/^\^/, '').replace(/\$$/, '');
+    const letters = Array.from(selectedLetters()).join('');
+    const parts = [];
+    if (core) parts.push(core);
+    // 受部门筛选限制的 xO 并集
+    if (letters) parts.push('[' + letters + ']O');
+    const source = '^(?:' + parts.join('|') + ')';
+    try{ return new RegExp(source, flags); }
+    catch(e){
+      alert('正则语法错误：\n' + e.message + '\n\n组合后的表达式：' + source);
+      throw e;
+    }
+  }
+
+  function renderHits(){
+    const checks = Array.from(document.querySelectorAll('.hitcb'));
+    const total = checks.length;
+    const selected = checks.filter(c=>c.checked).length;
+    stat.textContent = `命中目录：${total} 个 · 已选中：${selected} 个`;
+  }
+
+  async function previewHits(){
+    hitList.innerHTML = '';
+    previewMatches = [];
+    const topOnly = (depthSel.value !== 'recurse');
+    const re = buildRegex();
+    const lettersSet = selectedLetters();
+    let idx = 0;
+    for (const root of srcDirs){
+      for await (const d of iterDirs(root, topOnly)){
+        const first = (d.name || '').charAt(0).toUpperCase();
+        if (!lettersSet.has(first)) continue;
+        if (re.test(d.name)){
+          const lab = document.createElement('label');
+          lab.className = 'item';
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.checked = true; // 默认全选
+          cb.className = 'hitcb';
+          cb.dataset.idx = String(idx);
+          cb.onchange = renderHits;
+          const span = document.createElement('span');
+          span.textContent = d.name;
+          lab.appendChild(cb);
+          lab.appendChild(span);
+          hitList.appendChild(lab);
+          previewMatches.push(d.handle);
+          idx++;
+        }
+      }
+    }
+    renderHits();
+  }
+
+  async function copyFile(srcFileHandle, dstDirHandle){
+    const file = await srcFileHandle.getFile();
+    const dstFileHandle = await dstDirHandle.getFileHandle(srcFileHandle.name, { create: true });
+    const writable = await dstFileHandle.createWritable();
+    await writable.write(await file.arrayBuffer());
+    await writable.close();
+  }
+  async function ensureSubDir(parent, name){
+    return await parent.getDirectoryHandle(name, { create: true });
+  }
+  async function copyDir(srcHandle, dstParent){
+    const dstHere = await ensureSubDir(dstParent, srcHandle.name);
+    for await (const [name,handle] of srcHandle.entries()){
+      if (handle.kind === 'file')      await copyFile(handle, dstHere);
+      else if (handle.kind === 'directory') await copyDir(handle, dstHere);
+    }
+  }
+
+  function updateProgress(done, total, currentName){
+    const percent = total ? Math.round(done * 100 / total) : 0;
+    fill.style.width = percent + '%';
+    pct.textContent = percent + '%';
+    copyingName.textContent = currentName || '—';
+    copyMeta.textContent = `${done} / ${total}`;
+    if (copyBox.style.display === 'none') copyBox.style.display = 'block';
+  }
+
+  function pushRecent(name){
+    const li = document.createElement('li');
+    li.textContent = name;
+    copyList.appendChild(li);
+    while(copyList.children.length > 8){
+      copyList.removeChild(copyList.firstChild);
+    }
+  }
+
+  async function startCopy(){
+    if (!dstDir){
+      alert('请先选择目标目录');
+      return;
+    }
+    if (!previewMatches || previewMatches.length === 0){
+      await previewHits();
+    }
+    const checks = Array.from(document.querySelectorAll('.hitcb'));
+    const chosenIdx = checks.filter(el=>el.checked).map(el=>Number(el.dataset.idx));
+    if (chosenIdx.length === 0){
+      alert('未选择任何要复制的目录');
+      return;
+    }
+
+    const matches = chosenIdx.map(i => previewMatches[i]).filter(Boolean);
+
+    copyList.innerHTML = '';
+    updateProgress(0, matches.length, '准备中…');
+    stat.textContent = '复制中...';
+
+    let done = 0;
+    for (const h of matches){
+      updateProgress(done, matches.length, h.name);
+      await copyDir(h, dstDir);
+      done++;
+      pushRecent(h.name);
+      updateProgress(done, matches.length, h.name);
+      stat.textContent = `复制中：${done}/${matches.length}`;
+    }
+    stat.textContent = `完成：复制了 ${done} 个目录`;
+    updateProgress(done, matches.length, '完成');
+  }
+
+  /* 拖拽文件夹相关 */
+  function handleDragOver(e){
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    this.classList.add('dragover');
+  }
+  function handleDragLeave(e){
+    e.preventDefault();
+    this.classList.remove('dragover');
+  }
+
+  async function handleDrop(e, type, el){
+    e.preventDefault();
+    el.classList.remove('dragover');
+    const dt = e.dataTransfer;
+    if (!dt || !dt.items) return;
+
+    const dirs = [];
+    for (const item of dt.items){
+      if (item.kind !== 'file') continue;
+      if (typeof item.getAsFileSystemHandle === 'function'){
+        try{
+          const handle = await item.getAsFileSystemHandle();
+          if (handle && handle.kind === 'directory'){
+            dirs.push(handle);
+          }
+        }catch(err){}
+      }
+    }
+
+    if (!dirs.length){
+      alert('未检测到文件夹，请拖拽文件夹（目录）到此处。若拖拽无效，可使用上方按钮选择。');
+      return;
+    }
+
+    if (type === 'src'){
+      for (const h of dirs){
+        srcDirs.push(h);
+      }
+      renderSrc();
+    }else if (type === 'dst'){
+      dstDir = dirs[0]; // 目标目录只取第一个
+      dstPath.textContent = `已选择：${dstDir.name}`;
+      $('#start').disabled = false;
+      $('#openDst').disabled = false;
+    }
+  }
+
+  function setupDropZone(el, type){
+    if (!el) return;
+    el.addEventListener('dragenter', handleDragOver);
+    el.addEventListener('dragover', handleDragOver);
+    el.addEventListener('dragleave', handleDragLeave);
+    el.addEventListener('drop', e => handleDrop(e, type, el));
+    el.addEventListener('click', () => {
+      if (type === 'src') pickSourceDir();
+      else if (type === 'dst') pickDestDir();
+    });
+  }
+
+  /** 事件绑定 **/
+  $('#pickSrc').onclick = pickSourceDir;
+  $('#clearSrc').onclick = clearSrc;
+  $('#pickDst').onclick = pickDestDir;
+  $('#openDst').onclick = openDestDir;
+  $('#preview').onclick = previewHits;
+  $('#start').onclick = startCopy;
+  $('#btnAll').onclick = () => { document.querySelectorAll('.hitcb').forEach(cb => cb.checked = true); renderHits(); };
+  $('#btnNone').onclick = () => { document.querySelectorAll('.hitcb').forEach(cb => cb.checked = false); renderHits(); };
+  $('#btnInvert').onclick = () => { document.querySelectorAll('.hitcb').forEach(cb => cb.checked = !cb.checked); renderHits(); };
+  $('#btnPresetDefault').onclick = () => { regexInput.value = '^(?:[OTRSM](?:[A-I]|N|0|UN))'; };
+  $('#btnPresetO').onclick = () => { regexInput.value = '^(?:O(?:[A-I]|N|0|UN))'; };
+  $('#btnPresetTRSM').onclick = () => { regexInput.value = '^(?:[TRSM](?:[A-I]|N|0|UN))'; };
+
+  $('#deptAll').onclick = () => { $$('.dept').forEach(cb => cb.checked = true); };
+  $('#deptNone').onclick = () => { $$('.dept').forEach(cb => cb.checked = false); };
+
+  setupDropZone(srcDrop, 'src');
+  setupDropZone(dstDrop, 'dst');
+})();
+</script>
+</body>
+</html>
