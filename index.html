@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -29,6 +28,15 @@
       color: #4b5563;
       line-height: 1.7;
       margin-bottom: 16px;
+    }
+    .offlineNotice {
+      margin-bottom: 16px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: #fff7ed;
+      color: #9a3412;
+      border: 1px solid #fdba74;
+      line-height: 1.7;
     }
     .grid {
       display: grid;
@@ -133,11 +141,6 @@
       font-size: 14px;
       background: #fff;
     }
-    textarea {
-      min-height: 84px;
-      resize: vertical;
-      line-height: 1.5;
-    }
     .check {
       display: flex;
       align-items: center;
@@ -152,18 +155,21 @@
       gap: 10px;
       margin-top: 12px;
     }
-    button {
+    button, .downloadBtn {
       border: none;
       border-radius: 12px;
       padding: 11px 16px;
       font-size: 14px;
       font-weight: 800;
       cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
     }
     .primary { background: #111827; color: white; }
     .accent { background: #2563eb; color: white; }
     .secondary { background: #e5e7eb; color: #111827; }
     .warn { background: #f59e0b; color: white; }
+    .downloadBtn { background: #2563eb; color: #fff; }
     .status {
       margin-top: 12px;
       padding: 10px 12px;
@@ -173,6 +179,17 @@
       line-height: 1.6;
       min-height: 44px;
       white-space: pre-wrap;
+    }
+    .previewBanner {
+      margin: 8px 0 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #dbeafe;
+      color: #1e3a8a;
+      border: 1px solid #93c5fd;
+      font-weight: 800;
+      line-height: 1.7;
+      font-size: 15px;
     }
     iframe {
       width: 100%;
@@ -210,18 +227,14 @@
       font-weight: 800;
       border-radius: 0;
     }
-    .collapseBtn:hover {
-      background: #e5e7eb;
-    }
+    .collapseBtn:hover { background: #e5e7eb; }
     .collapseContent {
       display: none;
       padding: 14px;
       background: #fff;
       border-top: 1px solid #e5e7eb;
     }
-    .collapseContent.open {
-      display: block;
-    }
+    .collapseContent.open { display: block; }
     @media (max-width: 980px) {
       .grid { grid-template-columns: 1fr; }
       .row-4, .row-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -234,15 +247,28 @@
     <div class="title">PDF 免责声明与 LOGO 批量替换工具</div>
     <div class="sub">
       这个版本专门用于 <b>不改尺寸标注、不改零件视图</b>，只批量修改工程图右下角标题栏里的
-      <b>长免责声明文字</b> 和 <b>LOGO</b>。<br>
-      原理是：在指定小区域内先盖白，再按你的要求写入新文字或留空，同时叠加新 LOGO，然后批量导出处理后的 PDF ZIP。<br>
-      注意：请把本文件下载到本地后，用 Chrome 或 Edge 打开使用；当前对话右侧预览环境不支持本地 PDF 选择。
+      <b>编号文字</b> 和 <b>LOGO</b>。<br>
+      编号格式固定为 <b>四位数-四位数-00_字母_字母数字</b> 这种样式。<br>例如：<b>1446-0253-00_A_A1</b>。你只需要输入前两段四位数、一个字母、以及最后一段“字母+数字”，再指定哪一页使用 “00”，其余页从第一页开始自动递增，但会跳过这页。
+    </div>
+
+    <div class="offlineNotice">
+      <div>
+        <b>提示：</b>
+        可先在线使用。若在线环境无法上传 PDF / LOGO，说明当前浏览器或网络环境限制了本地文件访问，
+        请点击下面按钮下载<b>离线版本</b>到电脑后再打开使用。
+      </div>
+      <div class="actions" style="margin-top:10px;">
+        <a class="downloadBtn" href="./pdf_disclaimer_logo_replace_v13_package.zip" download>
+          下载离线版本
+        </a>
+      </div>
     </div>
 
     <div class="grid">
       <div class="card">
         <div class="pill">先预览第一页，确认位置无误后再批量导出</div>
         <h2>PDF 预览</h2>
+        <div class="previewBanner" id="previewBanner">当前还没有生成预览。</div>
         <iframe id="previewFrame"></iframe>
         <div class="mini">
           坐标单位是 PDF point。A4 横向常见尺寸大约是 842 × 595。<br>
@@ -260,6 +286,9 @@
           <div class="hint">可一次导入多个工程图 PDF，处理后会打包成 ZIP。</div>
         </div>
         <div id="srcList" class="file-list">还没有选择源 PDF。</div>
+        <div class="actions" style="margin-top:-2px;margin-bottom:12px;">
+          <button type="button" class="secondary" id="clearPdfBtn">删除已选择 PDF</button>
+        </div>
 
         <div class="dropzone" id="logoDrop">
           <div style="font-size:16px;font-weight:800;margin-bottom:8px;">拖入新 LOGO</div>
@@ -268,11 +297,42 @@
           <div class="hint">推荐透明 PNG。也支持 JPG 和单页 PDF。</div>
         </div>
         <div id="logoInfo" class="file-list">还没有选择 LOGO。</div>
+        <div class="actions" style="margin-top:-2px;margin-bottom:12px;">
+          <button type="button" class="secondary" id="clearLogoBtn">删除已选择 LOGO</button>
+        </div>
 
-        <div class="sectionTitle">免责声明文字内容</div>
-        <div class="field">
-          <label>新免责声明文字（由用户输入；留空 = 只删除不写新字）</label>
-          <textarea id="disclaimerText"></textarea>
+        <div class="sectionTitle">编号生成规则</div>
+        <div class="row-4">
+          <div class="field">
+            <label>前四位数字</label>
+            <input id="codePart1" type="text" value="1446" maxlength="4" />
+          </div>
+          <div class="field">
+            <label>后四位数字</label>
+            <input id="codePart2" type="text" value="0253" maxlength="4" />
+          </div>
+          <div class="field">
+            <label>中间字母（A-Z）</label>
+            <input id="suffixLetter1" type="text" value="A" maxlength="1" />
+          </div>
+          <div class="field">
+            <label>最后字母+数字（如 A1）</label>
+            <input id="suffixLetterNum" type="text" value="A1" maxlength="2" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>“00” 所在 PDF 页码</label>
+            <input id="zeroPage" type="number" value="1" min="1" step="1" />
+          </div>
+          <div class="field">
+            <label>生成预览格式</label>
+            <input value="####-####-00_A_A1" disabled />
+          </div>
+        </div>
+        <div class="mini">
+          规则：前两段必须是四位数字；第三段会按页自动生成 00 / 01 / 02……；
+          中间段必须是 1 个英文字母 A-Z；最后一段必须是“1 个英文字母 + 1 个数字”，数字默认为 1。
         </div>
 
         <div class="row">
@@ -292,51 +352,50 @@
           </div>
         </div>
 
-        <label class="check"><input type="checkbox" id="enableDisclaimer" checked /> 启用免责声明文字替换</label>
+        <label class="check"><input type="checkbox" id="enableDisclaimer" checked /> 启用编号文字替换</label>
         <label class="check"><input type="checkbox" id="enableLogo" checked /> 启用 LOGO 替换</label>
-        <label class="check"><input type="checkbox" id="previewOnlyPage1" checked /> 预览时仅处理第一页</label>
+        <label class="check"><input type="checkbox" id="previewOnlyPage1" /> 预览时仅处理第一页</label>
 
         <div class="collapsible">
           <button type="button" class="collapseBtn" id="toggleParamsBtn">显示/隐藏调参数面板</button>
           <div class="collapseContent" id="paramsPanel">
-<div class="sectionTitle">免责声明区域参数</div>
-        <div class="row-4">
-          <div class="field"><label>免责声明区域 X</label><input id="disclaimerX" type="number" value="580" step="1" /></div>
-          <div class="field"><label>免责声明区域 Y</label><input id="disclaimerY" type="number" value="25" step="1" /></div>
-          <div class="field"><label>免责声明区域宽</label><input id="disclaimerW" type="number" value="139" step="1" /></div>
-          <div class="field"><label>免责声明区域高</label><input id="disclaimerH" type="number" value="25" step="1" /></div>
-        </div>
-        <div class="row-4">
-          <div class="field"><label>免责声明字体大小</label><input id="disclaimerFontSize" type="number" value="6.5" step="0.5" /></div>
-          <div class="field"><label>免责声明最大行数</label><input id="disclaimerMaxLines" type="number" value="4" step="1" /></div>
-          <div class="field"><label>说明</label><input value="留空即纯删除" disabled /></div>
-          <div class="field"><label>说明</label><input value="自动换行" disabled /></div>
-        </div>
+            <div class="sectionTitle">编号区域参数</div>
+            <div class="row-4">
+              <div class="field"><label>编号区域 X</label><input id="disclaimerX" type="number" value="580" step="1" /></div>
+              <div class="field"><label>编号区域 Y</label><input id="disclaimerY" type="number" value="25" step="1" /></div>
+              <div class="field"><label>编号区域宽</label><input id="disclaimerW" type="number" value="139" step="1" /></div>
+              <div class="field"><label>编号区域高</label><input id="disclaimerH" type="number" value="25" step="1" /></div>
+            </div>
+            <div class="row-4">
+              <div class="field"><label>编号字体大小</label><input id="disclaimerFontSize" type="number" value="6.5" step="0.5" /></div>
+              <div class="field"><label>编号最大行数</label><input id="disclaimerMaxLines" type="number" value="4" step="1" /></div>
+              <div class="field"><label>说明</label><input value="自动按页生成" disabled /></div>
+              <div class="field"><label>说明</label><input value="固定两位数字" disabled /></div>
+            </div>
 
-        <div class="sectionTitle">LOGO 区域参数</div>
-        <div class="row-4">
-          <div class="field"><label>LOGO 区域 X</label><input id="logoX" type="number" value="725" step="1" /></div>
-          <div class="field"><label>LOGO 区域 Y</label><input id="logoY" type="number" value="79" step="1" /></div>
-          <div class="field"><label>LOGO 区域宽</label><input id="logoW" type="number" value="85" step="1" /></div>
-          <div class="field"><label>LOGO 区域高</label><input id="logoH" type="number" value="23" step="1" /></div>
-        </div>
-        <div class="row-3">
-          <div class="field">
-            <label>LOGO 适配模式</label>
-            <select id="logoFit">
-              <option value="contain">完整显示（contain）</option>
-              <option value="cover">铺满区域（cover）</option>
-              <option value="stretch">拉伸填满</option>
-            </select>
+            <div class="sectionTitle">LOGO 区域参数</div>
+            <div class="row-4">
+              <div class="field"><label>LOGO 区域 X</label><input id="logoX" type="number" value="725" step="1" /></div>
+              <div class="field"><label>LOGO 区域 Y</label><input id="logoY" type="number" value="79" step="1" /></div>
+              <div class="field"><label>LOGO 区域宽</label><input id="logoW" type="number" value="85" step="1" /></div>
+              <div class="field"><label>LOGO 区域高</label><input id="logoH" type="number" value="23" step="1" /></div>
+            </div>
+            <div class="row-3">
+              <div class="field">
+                <label>LOGO 适配模式</label>
+                <select id="logoFit">
+                  <option value="contain">完整显示（contain）</option>
+                  <option value="cover">铺满区域（cover）</option>
+                  <option value="stretch">拉伸填满</option>
+                </select>
+              </div>
+              <div class="field"><label>LOGO 内边距 X</label><input id="logoPadX" type="number" value="5" step="1" /></div>
+              <div class="field"><label>LOGO 内边距 Y</label><input id="logoPadY" type="number" value="3" step="1" /></div>
+            </div>
           </div>
-          <div class="field"><label>LOGO 内边距 X</label><input id="logoPadX" type="number" value="5" step="1" /></div>
-          <div class="field"><label>LOGO 内边距 Y</label><input id="logoPadY" type="number" value="3" step="1" /></div>
         </div>
 
-                  </div>
-        </div>
-
-<div class="actions">
+        <div class="actions">
           <button class="secondary" id="presetBtn">填入当前样例参数</button>
           <button class="warn" id="previewBtn">加载预览</button>
           <button class="accent" id="exportOneBtn">导出当前预览 PDF</button>
@@ -357,7 +416,10 @@
     const pickLogoBtn = document.getElementById('pickLogoBtn');
     const srcList = document.getElementById('srcList');
     const logoInfo = document.getElementById('logoInfo');
+    const clearPdfBtn = document.getElementById('clearPdfBtn');
+    const clearLogoBtn = document.getElementById('clearLogoBtn');
     const previewFrame = document.getElementById('previewFrame');
+    const previewBanner = document.getElementById('previewBanner');
     const statusBox = document.getElementById('status');
     const toggleParamsBtn = document.getElementById('toggleParamsBtn');
     const paramsPanel = document.getElementById('paramsPanel');
@@ -368,6 +430,16 @@
 
     function setStatus(msg) {
       statusBox.textContent = msg;
+    }
+
+    async function getPdfPageCount(file) {
+      const bytes = await file.arrayBuffer();
+      const doc = await PDFDocument.load(bytes);
+      return doc.getPageCount();
+    }
+
+    function setPreviewBanner(text) {
+      previewBanner.textContent = text;
     }
 
     function formatSize(size) {
@@ -403,6 +475,27 @@
 
     pickPdfBtn.addEventListener('click', () => srcInput.click());
     pickLogoBtn.addEventListener('click', () => logoInput.click());
+
+    clearPdfBtn.addEventListener('click', () => {
+      sourceFiles = [];
+      srcInput.value = '';
+      renderSourceList();
+      setStatus('已删除已选择的 PDF。');
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+        previewUrl = null;
+      }
+      previewFrame.src = '';
+      setPreviewBanner('当前还没有生成预览。');
+    });
+
+    clearLogoBtn.addEventListener('click', () => {
+      logoFile = null;
+      logoInput.value = '';
+      renderLogoInfo();
+      setStatus('已删除已选择的 LOGO。');
+    });
+
     toggleParamsBtn.addEventListener('click', () => {
       paramsPanel.classList.toggle('open');
       toggleParamsBtn.textContent = paramsPanel.classList.contains('open')
@@ -474,9 +567,52 @@
       return document.getElementById(id).checked;
     }
 
+    function sanitizeUpper(v) {
+      return String(v || '').trim().toUpperCase();
+    }
+
+    function validateCodeParts(part1, part2, suffix1, suffix2) {
+      const p1 = String(part1 || '').trim();
+      const p2 = String(part2 || '').trim();
+      const s1 = sanitizeUpper(suffix1);
+      const s2 = sanitizeUpper(suffix2);
+
+      if (!/^\d{4}$/.test(p1)) {
+        throw new Error('前四位必须是 4 位数字。');
+      }
+      if (!/^\d{4}$/.test(p2)) {
+        throw new Error('后四位必须是 4 位数字。');
+      }
+      if (!/^[A-Z]$/.test(s1)) {
+        throw new Error('中间字母必须是 1 个英文字母 A-Z。');
+      }
+      if (!/^[A-Z][0-9]$/.test(s2)) {
+        throw new Error('最后一段必须是“1 个英文字母 + 1 个数字”，例如 A1。');
+      }
+      return { p1, p2, s1, s2 };
+    }
+
+    function buildCodeForPage(part1, part2, suffix1, suffix2, zeroPage, pageNo) {
+      const parts = validateCodeParts(part1, part2, suffix1, suffix2);
+      let n;
+      if (pageNo === zeroPage) {
+        n = 0;
+      } else if (pageNo < zeroPage) {
+        n = pageNo;
+      } else {
+        n = pageNo - 1;
+      }
+      const nn = String(n).padStart(2, '0');
+      return `${parts.p1}-${parts.p2}-${nn}_${parts.s1}_${parts.s2}`;
+    }
+
     function getConfig() {
       return {
-        disclaimerText: value('disclaimerText'),
+        codePart1: value('codePart1'),
+        codePart2: value('codePart2'),
+        suffixLetter1: value('suffixLetter1'),
+        suffixLetterNum: value('suffixLetterNum'),
+        zeroPage: Math.max(1, Number(value('zeroPage')) || 1),
         pageMode: value('pageMode'),
         nameMode: value('nameMode'),
         enableDisclaimer: checked('enableDisclaimer'),
@@ -608,38 +744,38 @@
 
     async function processPdf(file, previewOnly = false) {
       const cfg = getConfig();
+      validateCodeParts(cfg.codePart1, cfg.codePart2, cfg.suffixLetter1, cfg.suffixLetterNum);
+
       const srcBytes = await file.arrayBuffer();
       const doc = await PDFDocument.load(srcBytes);
       const logo = cfg.enableLogo ? await embedLogo(doc) : null;
       const pages = doc.getPages();
       const pageLimit = (cfg.pageMode === 'first' || previewOnly) ? 1 : pages.length;
 
-      let disclaimerImage = null;
-      if (cfg.enableDisclaimer && (cfg.disclaimerText || '').trim()) {
-        const disclaimerPngUrl = await textToPngDataUrl(
-          cfg.disclaimerText,
-          cfg.disclaimerW,
-          cfg.disclaimerH,
-          cfg.disclaimerFontSize,
-          cfg.disclaimerMaxLines
-        );
-        const disclaimerBytes = await fetch(disclaimerPngUrl).then(r => r.arrayBuffer());
-        disclaimerImage = await doc.embedPng(disclaimerBytes);
-      }
-
       for (let i = 0; i < pageLimit; i++) {
         const page = pages[i];
+        const pageNo = i + 1;
+        const pageSize = page.getSize();
 
         if (cfg.enableDisclaimer) {
+          const codeText = buildCodeForPage(cfg.codePart1, cfg.codePart2, cfg.suffixLetter1, cfg.suffixLetterNum, cfg.zeroPage, pageNo);
+          const codePngUrl = await textToPngDataUrl(
+            codeText,
+            cfg.disclaimerW,
+            cfg.disclaimerH,
+            cfg.disclaimerFontSize,
+            cfg.disclaimerMaxLines
+          );
+          const codeBytes = await fetch(codePngUrl).then(r => r.arrayBuffer());
+          const codeImage = await doc.embedPng(codeBytes);
+
           drawWhiteBox(page, cfg.disclaimerX, cfg.disclaimerY, cfg.disclaimerW, cfg.disclaimerH);
-          if (disclaimerImage) {
-            page.drawImage(disclaimerImage, {
-              x: cfg.disclaimerX,
-              y: cfg.disclaimerY,
-              width: cfg.disclaimerW,
-              height: cfg.disclaimerH
-            });
-          }
+          page.drawImage(codeImage, {
+            x: cfg.disclaimerX,
+            y: cfg.disclaimerY,
+            width: cfg.disclaimerW,
+            height: cfg.disclaimerH
+          });
         }
 
         if (cfg.enableLogo && logo) {
@@ -658,6 +794,33 @@
             page.drawImage(logo.embedded, rect);
           }
         }
+
+        if (previewOnly) {
+          const previewText = `预览提示：这是第 ${pageNo} 页 / 共 ${pages.length} 页`;
+          const previewWidth = 190;
+          const previewHeight = 20;
+          const previewPngUrl = await textToPngDataUrl(previewText, previewWidth, previewHeight, 10, 1);
+          const previewBytes = await fetch(previewPngUrl).then(r => r.arrayBuffer());
+          const previewImage = await doc.embedPng(previewBytes);
+
+          const x = Math.max(8, (pageSize.width - previewWidth) / 2);
+          const y = Math.max(8, pageSize.height - previewHeight - 6);
+
+          page.drawRectangle({
+            x: x - 4,
+            y: y - 2,
+            width: previewWidth + 8,
+            height: previewHeight + 4,
+            color: rgb(1, 1, 0.80),
+            opacity: 0.95
+          });
+          page.drawImage(previewImage, {
+            x,
+            y,
+            width: previewWidth,
+            height: previewHeight
+          });
+        }
       }
 
       return await doc.save();
@@ -675,8 +838,12 @@
     }
 
     document.getElementById('presetBtn').addEventListener('click', () => {
+      document.getElementById('codePart1').value = '1446';
+      document.getElementById('codePart2').value = '0253';
+      document.getElementById('suffixLetter1').value = 'A';
+      document.getElementById('suffixLetterNum').value = 'A1';
+      document.getElementById('zeroPage').value = 1;
       document.getElementById('enableDisclaimer').checked = true;
-      document.getElementById('disclaimerText').value = '';
       document.getElementById('disclaimerX').value = 580;
       document.getElementById('disclaimerY').value = 25;
       document.getElementById('disclaimerW').value = 139;
@@ -692,7 +859,7 @@
       document.getElementById('logoPadY').value = 3;
       document.getElementById('logoFit').value = 'contain';
 
-      setStatus('已切换为你截图里的默认参数：免责声明区=(580,25,139,25)，LOGO区=(725,79,85,23)，字体大小=6.5，最大行数=4。');
+      setStatus('已切换为编号生成模式：输入两段四位数字、一个字母、以及最后一段“字母+数字”，再选择“00”所在页，其余页自动递增并跳过该页。');
     });
 
     document.getElementById('previewBtn').addEventListener('click', async () => {
@@ -700,7 +867,11 @@
         if (!sourceFiles.length) throw new Error('请先选择至少一个 PDF。');
         if (checked('enableLogo') && !logoFile) throw new Error('已启用 LOGO 替换，请先选择 LOGO 文件。');
 
+        const cfg = getConfig();
+        validateCodeParts(cfg.codePart1, cfg.codePart2, cfg.suffixLetter1, cfg.suffixLetterNum);
+
         setStatus('正在生成预览...');
+        const pageCount = await getPdfPageCount(sourceFiles[0]);
         const bytes = await processPdf(sourceFiles[0], checked('previewOnlyPage1'));
         const blob = new Blob([bytes], { type: 'application/pdf' });
 
@@ -708,7 +879,13 @@
         previewUrl = URL.createObjectURL(blob);
         previewFrame.src = previewUrl;
 
-        setStatus('预览已生成，请检查免责声明区域和 LOGO 位置。');
+        if (checked('previewOnlyPage1')) {
+          setPreviewBanner(`当前预览文件：${sourceFiles[0].name} ｜ 当前显示的是第 1 页 / 共 ${pageCount} 页`);
+        } else {
+          setPreviewBanner(`当前预览文件：${sourceFiles[0].name} ｜ 当前显示的是第 1 页到第 ${pageCount} 页 / 共 ${pageCount} 页`);
+        }
+
+        setStatus('预览已生成，请检查编号区域和 LOGO 位置。');
       } catch (e) {
         setStatus('预览失败：' + e.message);
       }
@@ -718,6 +895,9 @@
       try {
         if (!sourceFiles.length) throw new Error('请先选择至少一个 PDF。');
         if (checked('enableLogo') && !logoFile) throw new Error('已启用 LOGO 替换，请先选择 LOGO 文件。');
+
+        const cfg = getConfig();
+        validateCodeParts(cfg.codePart1, cfg.codePart2, cfg.suffixLetter1, cfg.suffixLetterNum);
 
         setStatus('正在导出单个文件...');
         const bytes = await processPdf(sourceFiles[0], false);
@@ -735,8 +915,10 @@
         if (!sourceFiles.length) throw new Error('请先选择至少一个 PDF。');
         if (checked('enableLogo') && !logoFile) throw new Error('已启用 LOGO 替换，请先选择 LOGO 文件。');
 
-        const zip = new JSZip();
         const cfg = getConfig();
+        validateCodeParts(cfg.codePart1, cfg.codePart2, cfg.suffixLetter1, cfg.suffixLetterNum);
+
+        const zip = new JSZip();
         setStatus(`开始批量处理，共 ${sourceFiles.length} 个文件...`);
 
         for (let i = 0; i < sourceFiles.length; i++) {
