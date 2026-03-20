@@ -210,31 +210,13 @@
       font-weight: 800;
       color: #111827;
     }
-    .collapsible {
+    .fixedPanel {
       margin-top: 14px;
       border: 1px solid #e5e7eb;
       border-radius: 14px;
-      overflow: hidden;
-      background: #fafafa;
-    }
-    .collapseBtn {
-      width: 100%;
-      text-align: left;
-      background: #f3f4f6;
-      color: #111827;
-      padding: 12px 14px;
-      font-size: 14px;
-      font-weight: 800;
-      border-radius: 0;
-    }
-    .collapseBtn:hover { background: #e5e7eb; }
-    .collapseContent {
-      display: none;
-      padding: 14px;
       background: #fff;
-      border-top: 1px solid #e5e7eb;
+      padding: 14px;
     }
-    .collapseContent.open { display: block; }
     @media (max-width: 980px) {
       .grid { grid-template-columns: 1fr; }
       .row-4, .row-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -251,18 +233,7 @@
       编号格式固定为 <b>四位数-四位数-00_字母_字母数字</b> 这种样式。<br>例如：<b>1446-0253-00_A_A1</b>。你只需要输入前两段四位数、一个字母、以及最后一段“字母+数字”，再指定哪一页使用 “00”，其余页从第一页开始自动递增，但会跳过这页。
     </div>
 
-    <div class="offlineNotice">
-      <div>
-        <b>提示：</b>
-        可先在线使用。若在线环境无法上传 PDF / LOGO，说明当前浏览器或网络环境限制了本地文件访问，
-        请点击下面按钮下载<b>离线版本</b>到电脑后再打开使用。
-      </div>
-      <div class="actions" style="margin-top:10px;">
-        <a class="downloadBtn" href="./pdf_disclaimer_logo_replace_v13_package.zip" download>
-          下载离线版本
-        </a>
-      </div>
-    </div>
+    
 
     <div class="grid">
       <div class="card">
@@ -274,6 +245,7 @@
           坐标单位是 PDF point。A4 横向常见尺寸大约是 842 × 595。<br>
           这版工具只改右下角局部区域，不会动图纸中间视图区。
         </div>
+
       </div>
 
       <div class="card">
@@ -291,10 +263,10 @@
         </div>
 
         <div class="dropzone" id="logoDrop">
-          <div style="font-size:16px;font-weight:800;margin-bottom:8px;">拖入新 LOGO</div>
+          <div style="font-size:16px;font-weight:800;margin-bottom:8px;">拖入新 LOGO（默认使用 rise.png）</div>
           <button type="button" class="accent" id="pickLogoBtn">选择 PNG / JPG / PDF</button>
           <input id="logoInput" type="file" accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf" />
-          <div class="hint">推荐透明 PNG。也支持 JPG 和单页 PDF。</div>
+          <div class="hint">默认 LOGO 文件名为 <b>rise.png</b>。未手动选择时，会自动优先加载同目录下的 rise.png。也支持 JPG 和单页 PDF。</div>
         </div>
         <div id="logoInfo" class="file-list">还没有选择 LOGO。</div>
         <div class="actions" style="margin-top:-2px;margin-bottom:12px;">
@@ -322,8 +294,35 @@
         </div>
         <div class="row">
           <div class="field">
-            <label>“00” 所在 PDF 页码</label>
-            <input id="zeroPage" type="number" value="1" min="1" step="1" />
+            <label>“00” 所在上传顺序</label>
+            <input id="zeroFileIndex" type="number" value="1" min="1" step="1" />
+          </div>
+          <div class="field">
+            <label>该 PDF 内第几页是 “00”</label>
+            <input id="zeroPageInFile" type="number" value="1" min="1" step="1" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>预览模式</label>
+            <select id="previewMode">
+              <option value="all" selected>一次预览全部上传的 PDF</option>
+              <option value="single">只预览其中 1 个 PDF</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>选择单个预览文件</label>
+            <select id="previewFileIndex"></select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>导出模式</label>
+            <select id="exportMode">
+              <option value="merged" selected>合并为 1 个 PDF 导出</option>
+              <option value="zip">分别处理后打包 ZIP</option>
+              <option value="pages">分别每页导出后打包 ZIP</option>
+            </select>
           </div>
           <div class="field">
             <label>生成预览格式</label>
@@ -331,8 +330,9 @@
           </div>
         </div>
         <div class="mini">
-          规则：前两段必须是四位数字；第三段会按页自动生成 00 / 01 / 02……；
-          中间段必须是 1 个英文字母 A-Z；最后一段必须是“1 个英文字母 + 1 个数字”，数字默认为 1。
+          规则：前两段必须是四位数字；第三段会按照<b>上传顺序</b>跨多个 PDF 连续生成 00 / 01 / 02……；
+          你只需要指定“第几个上传的 PDF”里“第几页”为 00，其余页面会自动递增并跳过 00。
+          中间段必须是 1 个英文字母 A-Z；最后一段必须是“1 个英文字母 + 1 个数字”，例如 A1。
         </div>
 
         <div class="row">
@@ -356,50 +356,53 @@
         <label class="check"><input type="checkbox" id="enableLogo" checked /> 启用 LOGO 替换</label>
         <label class="check"><input type="checkbox" id="previewOnlyPage1" /> 预览时仅处理第一页</label>
 
-        <div class="collapsible">
-          <button type="button" class="collapseBtn" id="toggleParamsBtn">显示/隐藏调参数面板</button>
-          <div class="collapseContent" id="paramsPanel">
-            <div class="sectionTitle">编号区域参数</div>
-            <div class="row-4">
-              <div class="field"><label>编号区域 X</label><input id="disclaimerX" type="number" value="580" step="1" /></div>
-              <div class="field"><label>编号区域 Y</label><input id="disclaimerY" type="number" value="25" step="1" /></div>
-              <div class="field"><label>编号区域宽</label><input id="disclaimerW" type="number" value="139" step="1" /></div>
-              <div class="field"><label>编号区域高</label><input id="disclaimerH" type="number" value="25" step="1" /></div>
-            </div>
-            <div class="row-4">
-              <div class="field"><label>编号字体大小</label><input id="disclaimerFontSize" type="number" value="6.5" step="0.5" /></div>
-              <div class="field"><label>编号最大行数</label><input id="disclaimerMaxLines" type="number" value="4" step="1" /></div>
-              <div class="field"><label>说明</label><input value="自动按页生成" disabled /></div>
-              <div class="field"><label>说明</label><input value="固定两位数字" disabled /></div>
-            </div>
-
-            <div class="sectionTitle">LOGO 区域参数</div>
-            <div class="row-4">
-              <div class="field"><label>LOGO 区域 X</label><input id="logoX" type="number" value="725" step="1" /></div>
-              <div class="field"><label>LOGO 区域 Y</label><input id="logoY" type="number" value="79" step="1" /></div>
-              <div class="field"><label>LOGO 区域宽</label><input id="logoW" type="number" value="85" step="1" /></div>
-              <div class="field"><label>LOGO 区域高</label><input id="logoH" type="number" value="23" step="1" /></div>
-            </div>
-            <div class="row-3">
-              <div class="field">
-                <label>LOGO 适配模式</label>
-                <select id="logoFit">
-                  <option value="contain">完整显示（contain）</option>
-                  <option value="cover">铺满区域（cover）</option>
-                  <option value="stretch">拉伸填满</option>
-                </select>
-              </div>
-              <div class="field"><label>LOGO 内边距 X</label><input id="logoPadX" type="number" value="5" step="1" /></div>
-              <div class="field"><label>LOGO 内边距 Y</label><input id="logoPadY" type="number" value="3" step="1" /></div>
-            </div>
+        <div class="card" style="margin-top:12px;padding:16px;background:#f8fafc;border:1px solid #fdba74;box-shadow:none;">
+          <h2 style="margin-bottom:8px;">下载与导出</h2>
+          <div class="mini">多个单独 PDF 也会像一个多页 PDF 一样按上传顺序连续处理。</div>
+          <div class="actions" style="margin-top:12px;">
+            <button class="warn" id="previewBtn">加载预览</button>
+            <button class="accent" id="exportOneBtn">导出当前预览结果</button>
+            <button class="primary" id="runBtn">一键处理并导出</button>
+          </div>
+          <div class="actions" style="margin-top:10px;">
+            <a class="downloadBtn secondary" href="./pdf_disclaimer_logo_replace_v13_package.zip" download>下载离线版本</a>
           </div>
         </div>
 
-        <div class="actions">
-          <button class="secondary" id="presetBtn">填入当前样例参数</button>
-          <button class="warn" id="previewBtn">加载预览</button>
-          <button class="accent" id="exportOneBtn">导出当前预览 PDF</button>
-          <button class="primary" id="runBtn">批量处理并下载 ZIP</button>
+        <div class="fixedPanel" id="paramsPanel" style="display:none;">
+          <div class="sectionTitle" style="margin-top:0;">调参数面板（默认固定显示）</div>
+          <div class="row-4">
+            <div class="field"><label>编号区域 X</label><input id="disclaimerX" type="number" value="580" step="1" /></div>
+            <div class="field"><label>编号区域 Y</label><input id="disclaimerY" type="number" value="25" step="1" /></div>
+            <div class="field"><label>编号区域宽</label><input id="disclaimerW" type="number" value="139" step="1" /></div>
+            <div class="field"><label>编号区域高</label><input id="disclaimerH" type="number" value="25" step="1" /></div>
+          </div>
+          <div class="row-4">
+            <div class="field"><label>编号字体大小</label><input id="disclaimerFontSize" type="number" value="6.5" step="0.5" /></div>
+            <div class="field"><label>编号最大行数</label><input id="disclaimerMaxLines" type="number" value="4" step="1" /></div>
+            <div class="field"><label>说明</label><input value="自动按页生成" disabled /></div>
+            <div class="field"><label>说明</label><input value="固定两位数字" disabled /></div>
+          </div>
+
+          <div class="sectionTitle">LOGO 区域参数</div>
+          <div class="row-4">
+            <div class="field"><label>LOGO 区域 X</label><input id="logoX" type="number" value="725" step="1" /></div>
+            <div class="field"><label>LOGO 区域 Y</label><input id="logoY" type="number" value="79" step="1" /></div>
+            <div class="field"><label>LOGO 区域宽</label><input id="logoW" type="number" value="85" step="1" /></div>
+            <div class="field"><label>LOGO 区域高</label><input id="logoH" type="number" value="23" step="1" /></div>
+          </div>
+          <div class="row-3">
+            <div class="field">
+              <label>LOGO 适配模式</label>
+              <select id="logoFit">
+                <option value="contain">完整显示（contain）</option>
+                <option value="cover">铺满区域（cover）</option>
+                <option value="stretch">拉伸填满</option>
+              </select>
+            </div>
+            <div class="field"><label>LOGO 内边距 X</label><input id="logoPadX" type="number" value="5" step="1" /></div>
+            <div class="field"><label>LOGO 内边距 Y</label><input id="logoPadY" type="number" value="3" step="1" /></div>
+          </div>
         </div>
 
         <div class="status" id="status">等待操作。</div>
@@ -421,12 +424,51 @@
     const previewFrame = document.getElementById('previewFrame');
     const previewBanner = document.getElementById('previewBanner');
     const statusBox = document.getElementById('status');
-    const toggleParamsBtn = document.getElementById('toggleParamsBtn');
     const paramsPanel = document.getElementById('paramsPanel');
+    const previewFileIndexSelect = document.getElementById('previewFileIndex');
+    const previewModeSelect = document.getElementById('previewMode');
+    const exportModeSelect = document.getElementById('exportMode');
 
     let sourceFiles = [];
     let logoFile = null;
+    let defaultLogoBlob = null;
+    let defaultLogoName = 'rise.png';
+    const EMBEDDED_DEFAULT_LOGO_DATA_URL = 'data:image/png;base64,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';
     let previewUrl = null;
+    let sourceMeta = [];
+
+    function dataURLToBlob(dataUrl) {
+      const parts = dataUrl.split(',');
+      const mime = (parts[0].match(/data:(.*?);base64/) || [])[1] || 'image/png';
+      const binary = atob(parts[1] || '');
+      const len = binary.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+      return new Blob([bytes], { type: mime });
+    }
+
+    async function ensureDefaultLogoLoaded() {
+      if (defaultLogoBlob) return defaultLogoBlob;
+      try {
+        defaultLogoBlob = dataURLToBlob(EMBEDDED_DEFAULT_LOGO_DATA_URL);
+        return defaultLogoBlob;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function getActiveLogoSource() {
+      if (logoFile) {
+        return { fileLike: logoFile, source: 'custom' };
+      }
+      if (defaultLogoBlob) {
+        return {
+          fileLike: new File([defaultLogoBlob], defaultLogoName, { type: defaultLogoBlob.type || 'image/png' }),
+          source: 'default'
+        };
+      }
+      return null;
+    }
 
     function setStatus(msg) {
       statusBox.textContent = msg;
@@ -440,6 +482,98 @@
 
     function setPreviewBanner(text) {
       previewBanner.textContent = text;
+    }
+
+    async function refreshSourceMeta() {
+      sourceMeta = [];
+      for (let i = 0; i < sourceFiles.length; i++) {
+        const pageCount = await getPdfPageCount(sourceFiles[i]);
+        sourceMeta.push({ pageCount });
+      }
+    }
+
+    function populatePreviewSelector() {
+      if (!previewFileIndexSelect) return;
+      if (!sourceFiles.length) {
+        previewFileIndexSelect.innerHTML = '<option value="1">暂无 PDF</option>';
+        return;
+      }
+      previewFileIndexSelect.innerHTML = sourceFiles
+        .map((f, i) => {
+          const meta = sourceMeta[i] || {};
+          const pages = meta.pageCount ? `（${meta.pageCount} 页）` : '';
+          return `<option value="${i + 1}">第 ${i + 1} 个：${f.name}${pages}</option>`;
+        })
+        .join('');
+    }
+
+    function getProcessedPageCountForFileIndex(fileIndex, pageMode) {
+      const meta = sourceMeta[fileIndex] || { pageCount: 1 };
+      return pageMode === 'first' ? 1 : Math.max(1, meta.pageCount || 1);
+    }
+
+
+    function getTotalProcessedPageCount(pageMode, previewOnly) {
+      let total = 0;
+      for (let i = 0; i < sourceFiles.length; i++) {
+        total += previewOnly ? 1 : getProcessedPageCountForFileIndex(i, pageMode);
+      }
+      return total;
+    }
+
+    async function mergeProcessedFiles(options = {}) {
+      const cfg = getConfig();
+      const mergedDoc = await PDFDocument.create();
+      let globalOffset = 0;
+      const previewOnly = !!options.previewOnly;
+      const singleFileIndex = options.singleFileIndex || null;
+
+      for (let i = 0; i < sourceFiles.length; i++) {
+        if (singleFileIndex && singleFileIndex !== i + 1) continue;
+
+        const processedBytes = await processPdf(sourceFiles[i], {
+          previewOnly,
+          fileIndex: i + 1,
+          startingGlobalIndex: globalOffset
+        });
+
+        const processedDoc = await PDFDocument.load(processedBytes);
+        const indices = processedDoc.getPageIndices();
+        const copiedPages = await mergedDoc.copyPages(processedDoc, indices);
+        copiedPages.forEach(page => mergedDoc.addPage(page));
+
+        globalOffset += previewOnly ? 1 : getProcessedPageCountForFileIndex(i, cfg.pageMode);
+      }
+
+      return await mergedDoc.save();
+    }
+
+    function calcGlobalZeroIndex(cfg) {
+      const fileIdx = Math.min(Math.max(1, Number(cfg.zeroFileIndex) || 1), Math.max(1, sourceFiles.length));
+      const fileMeta = sourceMeta[fileIdx - 1] || { pageCount: 1 };
+      const maxPage = cfg.pageMode === 'first' ? 1 : Math.max(1, fileMeta.pageCount || 1);
+      const zeroPage = Math.min(Math.max(1, Number(cfg.zeroPageInFile) || 1), maxPage);
+
+      let globalIndex = 0;
+      for (let i = 0; i < fileIdx - 1; i++) {
+        globalIndex += getProcessedPageCountForFileIndex(i, cfg.pageMode);
+      }
+      globalIndex += zeroPage;
+      return { fileIdx, zeroPage, globalIndex };
+    }
+
+    function buildCodeForGlobalIndex(part1, part2, suffix1, suffix2, zeroGlobalIndex, currentGlobalIndex) {
+      const parts = validateCodeParts(part1, part2, suffix1, suffix2);
+      let n;
+      if (currentGlobalIndex === zeroGlobalIndex) {
+        n = 0;
+      } else if (currentGlobalIndex < zeroGlobalIndex) {
+        n = currentGlobalIndex;
+      } else {
+        n = currentGlobalIndex - 1;
+      }
+      const nn = String(n).padStart(2, '0');
+      return `${parts.p1}-${parts.p2}-${nn}_${parts.s1}_${parts.s2}`;
     }
 
     function formatSize(size) {
@@ -478,6 +612,7 @@
 
     clearPdfBtn.addEventListener('click', () => {
       sourceFiles = [];
+      sourceMeta = [];
       srcInput.value = '';
       renderSourceList();
       setStatus('已删除已选择的 PDF。');
@@ -489,21 +624,24 @@
       setPreviewBanner('当前还没有生成预览。');
     });
 
-    clearLogoBtn.addEventListener('click', () => {
+    clearLogoBtn.addEventListener('click', async () => {
       logoFile = null;
       logoInput.value = '';
+      await ensureDefaultLogoLoaded();
       renderLogoInfo();
-      setStatus('已删除已选择的 LOGO。');
+      setStatus(defaultLogoBlob ? '已清除手动 LOGO，已恢复默认 LOGO：rise.png。' : '已删除已选择的 LOGO。');
     });
 
-    toggleParamsBtn.addEventListener('click', () => {
-      paramsPanel.classList.toggle('open');
-      toggleParamsBtn.textContent = paramsPanel.classList.contains('open')
-        ? '隐藏调参数面板'
-        : '显示/隐藏调参数面板';
-    });
 
-    srcInput.addEventListener('change', () => {
+    function refreshPreviewModeUI() {
+      const isSingle = previewModeSelect.value === 'single';
+      previewFileIndexSelect.disabled = !isSingle;
+      previewFileIndexSelect.style.background = isSingle ? '#fff' : '#f3f4f6';
+    }
+
+    previewModeSelect.addEventListener('change', refreshPreviewModeUI);
+
+    srcInput.addEventListener('change', async () => {
       sourceFiles = [...srcInput.files].filter(f => {
         const name = (f.name || '').toLowerCase();
         const type = (f.type || '').toLowerCase();
@@ -512,10 +650,16 @@
       if (!sourceFiles.length && srcInput.files.length) {
         setStatus('没有识别到 PDF。请确认文件后缀是 .pdf。');
       }
+      if (sourceFiles.length) {
+        setStatus('正在读取 PDF 页数并建立上传顺序...');
+        await refreshSourceMeta();
+      } else {
+        sourceMeta = [];
+      }
       renderSourceList();
     });
 
-    logoInput.addEventListener('change', () => {
+    logoInput.addEventListener('change', async () => {
       logoFile = logoInput.files[0] || null;
       if (logoFile) {
         const name = (logoFile.name || '').toLowerCase();
@@ -536,27 +680,39 @@
           setStatus('LOGO 文件格式不支持，请选择 PNG / JPG / PDF。');
         }
       }
+      if (!logoFile) {
+        await ensureDefaultLogoLoaded();
+      }
       renderLogoInfo();
     });
 
     function renderSourceList() {
       if (!sourceFiles.length) {
         srcList.textContent = '还没有选择源 PDF。';
+        populatePreviewSelector();
         return;
       }
       srcList.innerHTML = sourceFiles
-        .map((f, i) => `<div class="file-item">${i + 1}. ${f.name} (${formatSize(f.size)})</div>`)
+        .map((f, i) => {
+          const meta = sourceMeta[i] || {};
+          const pages = meta.pageCount ? `｜${meta.pageCount} 页` : '';
+          return `<div class="file-item">${i + 1}. ${f.name} (${formatSize(f.size)}) ${pages}</div>`;
+        })
         .join('');
-      setStatus(`已选择 ${sourceFiles.length} 个 PDF。`);
+      populatePreviewSelector();
+      setStatus(`已选择 ${sourceFiles.length} 个 PDF。编号会按上传顺序连续生成。`);
     }
 
     function renderLogoInfo() {
-      if (!logoFile) {
+      const active = getActiveLogoSource();
+      if (!active) {
         logoInfo.textContent = '还没有选择 LOGO。';
         return;
       }
-      logoInfo.innerHTML = `<div class="file-item">${logoFile.name} (${formatSize(logoFile.size)})</div>`;
-      setStatus(`已加载 LOGO：${logoFile.name}`);
+      const f = active.fileLike;
+      const suffix = active.source === 'default' ? '｜默认 LOGO' : '｜手动选择';
+      logoInfo.innerHTML = `<div class="file-item">${f.name} (${formatSize(f.size)}) ${suffix}</div>`;
+      setStatus(active.source === 'default' ? `已加载默认 LOGO：${f.name}` : `已加载 LOGO：${f.name}`);
     }
 
     function value(id) {
@@ -592,27 +748,17 @@
       return { p1, p2, s1, s2 };
     }
 
-    function buildCodeForPage(part1, part2, suffix1, suffix2, zeroPage, pageNo) {
-      const parts = validateCodeParts(part1, part2, suffix1, suffix2);
-      let n;
-      if (pageNo === zeroPage) {
-        n = 0;
-      } else if (pageNo < zeroPage) {
-        n = pageNo;
-      } else {
-        n = pageNo - 1;
-      }
-      const nn = String(n).padStart(2, '0');
-      return `${parts.p1}-${parts.p2}-${nn}_${parts.s1}_${parts.s2}`;
-    }
-
     function getConfig() {
       return {
         codePart1: value('codePart1'),
         codePart2: value('codePart2'),
         suffixLetter1: value('suffixLetter1'),
         suffixLetterNum: value('suffixLetterNum'),
-        zeroPage: Math.max(1, Number(value('zeroPage')) || 1),
+        zeroFileIndex: Math.max(1, Number(value('zeroFileIndex')) || 1),
+        zeroPageInFile: Math.max(1, Number(value('zeroPageInFile')) || 1),
+        previewMode: value('previewMode'),
+        previewFileIndex: Math.max(1, Number(value('previewFileIndex')) || 1),
+        exportMode: value('exportMode'),
         pageMode: value('pageMode'),
         nameMode: value('nameMode'),
         enableDisclaimer: checked('enableDisclaimer'),
@@ -634,11 +780,13 @@
     }
 
     async function embedLogo(doc) {
-      if (!logoFile) return null;
+      const active = getActiveLogoSource();
+      if (!active) return null;
 
-      const bytes = await logoFile.arrayBuffer();
-      const name = logoFile.name.toLowerCase();
-      const type = (logoFile.type || '').toLowerCase();
+      const logoSource = active.fileLike;
+      const bytes = await logoSource.arrayBuffer();
+      const name = logoSource.name.toLowerCase();
+      const type = (logoSource.type || '').toLowerCase();
 
       if (type.includes('png') || name.endsWith('.png')) {
         const img = await doc.embedPng(bytes);
@@ -742,7 +890,22 @@
       return canvas.toDataURL('image/png');
     }
 
-    async function processPdf(file, previewOnly = false) {
+    function buildOutputName(baseName, index, ext = '.pdf') {
+      const cfg = getConfig();
+      return cfg.nameMode === 'suffix'
+        ? `${baseName}_edited${ext}`
+        : `output_${index}${ext}`;
+    }
+
+    async function buildSinglePagePdfFromProcessed(processedBytes, pageIndex) {
+      const srcDoc = await PDFDocument.load(processedBytes);
+      const outDoc = await PDFDocument.create();
+      const [copiedPage] = await outDoc.copyPages(srcDoc, [pageIndex]);
+      outDoc.addPage(copiedPage);
+      return await outDoc.save();
+    }
+
+    async function processPdf(file, options = {}) {
       const cfg = getConfig();
       validateCodeParts(cfg.codePart1, cfg.codePart2, cfg.suffixLetter1, cfg.suffixLetterNum);
 
@@ -750,15 +913,27 @@
       const doc = await PDFDocument.load(srcBytes);
       const logo = cfg.enableLogo ? await embedLogo(doc) : null;
       const pages = doc.getPages();
+      const zeroInfo = calcGlobalZeroIndex(cfg);
+      const previewOnly = !!options.previewOnly;
+      const fileIndex = options.fileIndex || 1;
+      const startingGlobalIndex = options.startingGlobalIndex || 0;
       const pageLimit = (cfg.pageMode === 'first' || previewOnly) ? 1 : pages.length;
 
       for (let i = 0; i < pageLimit; i++) {
         const page = pages[i];
         const pageNo = i + 1;
         const pageSize = page.getSize();
+        const currentGlobalIndex = startingGlobalIndex + pageNo;
 
         if (cfg.enableDisclaimer) {
-          const codeText = buildCodeForPage(cfg.codePart1, cfg.codePart2, cfg.suffixLetter1, cfg.suffixLetterNum, cfg.zeroPage, pageNo);
+          const codeText = buildCodeForGlobalIndex(
+            cfg.codePart1,
+            cfg.codePart2,
+            cfg.suffixLetter1,
+            cfg.suffixLetterNum,
+            zeroInfo.globalIndex,
+            currentGlobalIndex
+          );
           const codePngUrl = await textToPngDataUrl(
             codeText,
             cfg.disclaimerW,
@@ -796,8 +971,8 @@
         }
 
         if (previewOnly) {
-          const previewText = `预览提示：这是第 ${pageNo} 页 / 共 ${pages.length} 页`;
-          const previewWidth = 190;
+          const previewText = `预览提示：第 ${fileIndex} 个 PDF，第 ${pageNo} 页 / 共 ${pages.length} 页｜全局序号 ${currentGlobalIndex}`;
+          const previewWidth = 320;
           const previewHeight = 20;
           const previewPngUrl = await textToPngDataUrl(previewText, previewWidth, previewHeight, 10, 1);
           const previewBytes = await fetch(previewPngUrl).then(r => r.arrayBuffer());
@@ -837,55 +1012,46 @@
       setTimeout(() => URL.revokeObjectURL(url), 1500);
     }
 
-    document.getElementById('presetBtn').addEventListener('click', () => {
-      document.getElementById('codePart1').value = '1446';
-      document.getElementById('codePart2').value = '0253';
-      document.getElementById('suffixLetter1').value = 'A';
-      document.getElementById('suffixLetterNum').value = 'A1';
-      document.getElementById('zeroPage').value = 1;
-      document.getElementById('enableDisclaimer').checked = true;
-      document.getElementById('disclaimerX').value = 580;
-      document.getElementById('disclaimerY').value = 25;
-      document.getElementById('disclaimerW').value = 139;
-      document.getElementById('disclaimerH').value = 25;
-      document.getElementById('disclaimerFontSize').value = 6.5;
-      document.getElementById('disclaimerMaxLines').value = 4;
-
-      document.getElementById('logoX').value = 725;
-      document.getElementById('logoY').value = 79;
-      document.getElementById('logoW').value = 85;
-      document.getElementById('logoH').value = 23;
-      document.getElementById('logoPadX').value = 5;
-      document.getElementById('logoPadY').value = 3;
-      document.getElementById('logoFit').value = 'contain';
-
-      setStatus('已切换为编号生成模式：输入两段四位数字、一个字母、以及最后一段“字母+数字”，再选择“00”所在页，其余页自动递增并跳过该页。');
-    });
-
     document.getElementById('previewBtn').addEventListener('click', async () => {
       try {
         if (!sourceFiles.length) throw new Error('请先选择至少一个 PDF。');
-        if (checked('enableLogo') && !logoFile) throw new Error('已启用 LOGO 替换，请先选择 LOGO 文件。');
+        if (checked('enableLogo') && !getActiveLogoSource()) throw new Error('已启用 LOGO 替换，但没有找到可用 LOGO。请上传 LOGO，或把默认文件 rise.png 放在网页同目录。');
 
         const cfg = getConfig();
         validateCodeParts(cfg.codePart1, cfg.codePart2, cfg.suffixLetter1, cfg.suffixLetterNum);
 
-        setStatus('正在生成预览...');
-        const pageCount = await getPdfPageCount(sourceFiles[0]);
-        const bytes = await processPdf(sourceFiles[0], checked('previewOnlyPage1'));
-        const blob = new Blob([bytes], { type: 'application/pdf' });
+        const previewOnly = checked('previewOnlyPage1');
+        const previewMode = cfg.previewMode;
+        let bytes;
 
+        if (previewMode === 'single') {
+          const previewFileIndex = Math.min(Math.max(1, cfg.previewFileIndex), sourceFiles.length);
+          setStatus(`正在生成第 ${previewFileIndex} 个 PDF 的预览...`);
+          bytes = await mergeProcessedFiles({ previewOnly, singleFileIndex: previewFileIndex });
+
+          const targetFile = sourceFiles[previewFileIndex - 1];
+          const pageCount = (sourceMeta[previewFileIndex - 1] || {}).pageCount || await getPdfPageCount(targetFile);
+          const zeroInfo = calcGlobalZeroIndex(cfg);
+          const endInfo = previewOnly ? '当前显示的是第 1 页' : `当前显示的是第 1 页到第 ${pageCount} 页`;
+          setPreviewBanner(`当前预览模式：单个 PDF ｜ 第 ${previewFileIndex} 个 / ${sourceFiles.length} 个 ｜ ${targetFile.name} ｜ ${endInfo} / 共 ${pageCount} 页 ｜ “00” 在第 ${zeroInfo.fileIdx} 个 PDF 的第 ${zeroInfo.zeroPage} 页`);
+        } else {
+          setStatus(`正在生成全部 ${sourceFiles.length} 个 PDF 的连续预览...`);
+          bytes = await mergeProcessedFiles({ previewOnly });
+
+          const zeroInfo = calcGlobalZeroIndex(cfg);
+          const totalPages = getTotalProcessedPageCount(cfg.pageMode, previewOnly);
+          const pageInfo = previewOnly
+            ? `当前显示的是全部文件各自第 1 页，共 ${totalPages} 页`
+            : `当前显示的是全部上传 PDF 按顺序合并后的连续预览，共 ${totalPages} 页`;
+          setPreviewBanner(`当前预览模式：全部上传 PDF 连续预览 ｜ 共 ${sourceFiles.length} 个文件 ｜ ${pageInfo} ｜ “00” 在第 ${zeroInfo.fileIdx} 个 PDF 的第 ${zeroInfo.zeroPage} 页`);
+        }
+
+        const blob = new Blob([bytes], { type: 'application/pdf' });
         if (previewUrl) URL.revokeObjectURL(previewUrl);
         previewUrl = URL.createObjectURL(blob);
         previewFrame.src = previewUrl;
 
-        if (checked('previewOnlyPage1')) {
-          setPreviewBanner(`当前预览文件：${sourceFiles[0].name} ｜ 当前显示的是第 1 页 / 共 ${pageCount} 页`);
-        } else {
-          setPreviewBanner(`当前预览文件：${sourceFiles[0].name} ｜ 当前显示的是第 1 页到第 ${pageCount} 页 / 共 ${pageCount} 页`);
-        }
-
-        setStatus('预览已生成，请检查编号区域和 LOGO 位置。');
+        setStatus('预览已生成。现在即使上传多个单独 PDF，也会按上传顺序像一个多页 PDF 一样连续预览。');
       } catch (e) {
         setStatus('预览失败：' + e.message);
       }
@@ -894,17 +1060,29 @@
     document.getElementById('exportOneBtn').addEventListener('click', async () => {
       try {
         if (!sourceFiles.length) throw new Error('请先选择至少一个 PDF。');
-        if (checked('enableLogo') && !logoFile) throw new Error('已启用 LOGO 替换，请先选择 LOGO 文件。');
+        if (checked('enableLogo') && !getActiveLogoSource()) throw new Error('已启用 LOGO 替换，但没有找到可用 LOGO。请上传 LOGO，或把默认文件 rise.png 放在网页同目录。');
 
         const cfg = getConfig();
         validateCodeParts(cfg.codePart1, cfg.codePart2, cfg.suffixLetter1, cfg.suffixLetterNum);
 
-        setStatus('正在导出单个文件...');
-        const bytes = await processPdf(sourceFiles[0], false);
-        const outName = sourceFiles[0].name.replace(/\.pdf$/i, '') + '_edited.pdf';
-        downloadBlob(new Blob([bytes], { type: 'application/pdf' }), outName);
+        const previewOnly = checked('previewOnlyPage1');
+        let bytes;
+        let outName;
 
-        setStatus('单个文件已导出：' + outName);
+        if (cfg.previewMode === 'single') {
+          const previewFileIndex = Math.min(Math.max(1, cfg.previewFileIndex), sourceFiles.length);
+          const targetFile = sourceFiles[previewFileIndex - 1];
+          setStatus(`正在导出第 ${previewFileIndex} 个预览文件...`);
+          bytes = await mergeProcessedFiles({ previewOnly, singleFileIndex: previewFileIndex });
+          outName = targetFile.name.replace(/\.pdf$/i, '') + '_edited.pdf';
+        } else {
+          setStatus('正在导出全部上传 PDF 的连续处理结果...');
+          bytes = await mergeProcessedFiles({ previewOnly });
+          outName = 'pdf_disclaimer_logo_merged.pdf';
+        }
+
+        downloadBlob(new Blob([bytes], { type: 'application/pdf' }), outName);
+        setStatus('导出完成：' + outName);
       } catch (e) {
         setStatus('导出失败：' + e.message);
       }
@@ -913,35 +1091,74 @@
     document.getElementById('runBtn').addEventListener('click', async () => {
       try {
         if (!sourceFiles.length) throw new Error('请先选择至少一个 PDF。');
-        if (checked('enableLogo') && !logoFile) throw new Error('已启用 LOGO 替换，请先选择 LOGO 文件。');
+        if (checked('enableLogo') && !getActiveLogoSource()) throw new Error('已启用 LOGO 替换，但没有找到可用 LOGO。请上传 LOGO，或把默认文件 rise.png 放在网页同目录。');
 
         const cfg = getConfig();
         validateCodeParts(cfg.codePart1, cfg.codePart2, cfg.suffixLetter1, cfg.suffixLetterNum);
 
+        if (cfg.exportMode === 'merged') {
+          setStatus(`开始合并处理，共 ${sourceFiles.length} 个文件...`);
+          const bytes = await mergeProcessedFiles({ previewOnly: false });
+          downloadBlob(new Blob([bytes], { type: 'application/pdf' }), 'pdf_disclaimer_logo_merged.pdf');
+          setStatus('处理完成，已按上传顺序合并为 1 个 PDF 下载。');
+          return;
+        }
+
         const zip = new JSZip();
         setStatus(`开始批量处理，共 ${sourceFiles.length} 个文件...`);
 
+        let globalOffset = 0;
+        let pageExportCounter = 1;
         for (let i = 0; i < sourceFiles.length; i++) {
           const file = sourceFiles[i];
           setStatus(`处理中 ${i + 1}/${sourceFiles.length}：${file.name}`);
 
-          const bytes = await processPdf(file, false);
-          const outName = cfg.nameMode === 'suffix'
-            ? file.name.replace(/\.pdf$/i, '') + '_edited.pdf'
-            : `output_${i + 1}.pdf`;
+          const bytes = await processPdf(file, {
+            fileIndex: i + 1,
+            startingGlobalIndex: globalOffset
+          });
 
-          zip.file(outName, bytes);
+          if (cfg.exportMode === 'zip') {
+            const outName = buildOutputName(file.name.replace(/\.pdf$/i, ''), i + 1);
+            zip.file(outName, bytes);
+          } else if (cfg.exportMode === 'pages') {
+            const processedPageCount = getProcessedPageCountForFileIndex(i, cfg.pageMode);
+            const safeBase = file.name.replace(/\.pdf$/i, '');
+            for (let pageIndex = 0; pageIndex < processedPageCount; pageIndex++) {
+              setStatus(`正在拆分页导出：${i + 1}/${sourceFiles.length}｜${file.name}｜第 ${pageIndex + 1} 页`);
+              const onePageBytes = await buildSinglePagePdfFromProcessed(bytes, pageIndex);
+              const outName = cfg.nameMode === 'suffix'
+                ? `${safeBase}_P${String(pageIndex + 1).padStart(2, '0')}_edited.pdf`
+                : `output_${pageExportCounter}.pdf`;
+              zip.file(outName, onePageBytes);
+              pageExportCounter += 1;
+            }
+          }
+
+          globalOffset += getProcessedPageCountForFileIndex(i, cfg.pageMode);
         }
 
         setStatus('正在打包 ZIP ...');
         const zipBlob = await zip.generateAsync({ type: 'blob' });
-        downloadBlob(zipBlob, 'pdf_disclaimer_logo_batch.zip');
+        const zipName = cfg.exportMode === 'pages'
+          ? 'pdf_disclaimer_logo_each_page.zip'
+          : 'pdf_disclaimer_logo_batch.zip';
+        downloadBlob(zipBlob, zipName);
 
-        setStatus('处理完成，ZIP 已开始下载。');
+        setStatus(cfg.exportMode === 'pages'
+          ? '处理完成，已按每页分别导出并打包 ZIP。'
+          : '处理完成，ZIP 已开始下载。');
       } catch (e) {
         setStatus('批量处理失败：' + e.message);
       }
     });
+
+    (async () => {
+      await ensureDefaultLogoLoaded();
+      renderLogoInfo();
+      populatePreviewSelector();
+      refreshPreviewModeUI();
+    })();
   </script>
 </body>
 </html>
